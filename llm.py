@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import os
 from dotenv import load_dotenv
@@ -40,6 +41,7 @@ def build_agent(user_id: int):
         - Avoid allergens and food items that worsen known medical conditions.
         - Calorie target should match user's goal or intake limit.
         - All meals should have calories mentioned and use regional ingredients.
+        - don't add any units in integer values.
         
     Generate a 7-day Indian/Gujarati meal plan with nutritional info. Output must strictly follow the schema.
     
@@ -67,7 +69,7 @@ def build_agent(user_id: int):
         prompt=chat_prompt
     )
     
-    memory = ConversationBufferMemory(chat_memory=True, return_messages=True)
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     
     agent_executor = AgentExecutor(
         agent=agent,
@@ -75,16 +77,16 @@ def build_agent(user_id: int):
         verbose=True,
         memory=memory
     )
-    return agent_executor
+    return agent_executor,parser
 
 # ---------- Main Chat Function ----------
 def chat_with_diet_agent(user_prompt: str, user_id: int):
-    agent = build_agent(user_id)
+    agent,parser = build_agent(user_id)
     response = agent.invoke({
         "input":prompt,
-        "agent_scratchpad":""
+        # "agent_scratchpad":""
     })
-    return response
+    return response,parser
 
 def store_AI_plan(user_id: int, ai_json: str):
     conn = sqlite3.connect(DB_NAME)
@@ -104,10 +106,11 @@ if __name__ == "__main__":
     prompt = "Can you plan a budget-friendly high protein vegetarian diet for me?"
     
     try:
-        response = chat_with_diet_agent(prompt, user_id)
+        response,parser = chat_with_diet_agent(prompt, user_id)
         print("\n--- AI Response ---\n")
         store_AI_plan(user_id=user_id, ai_json=response["output"])
         print("plan saved successfully")
         # print(response)
+        # print(parser.parse(response["output"]))
     except Exception as e:
         print(f"Error: {e}")
