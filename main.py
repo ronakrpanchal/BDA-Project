@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 import sqlite3
 import json
-from llm import chat_with_diet_agent  
+from llm import get_structured_output , get_user_data , store_AI_plan
 
 app = FastAPI()
 
@@ -69,25 +69,28 @@ def get_diet(id: int = Query(..., description="Diet ID")):
 @app.post("/chat")
 def chat(request: ChatRequest):
     try:
-        # Get response from AI agent
-        response = chat_with_diet_agent(request.message, request.user_id)
+        # Step 1: Fetch user data from DB
+        user_data = get_user_data(request.user_id)
 
-        # Store the response in DB
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO diet (AI_Plan, user_id) VALUES (?, ?)", (response, request.user_id))
-        conn.commit()
-        conn.close()
+        # Step 2: Get structured response from Groq (LLaMA)
+        structured_plan = get_structured_output(request.message, user_data)
 
+        # Step 3: Store the structured JSON response into the database
+        store_AI_plan(request.user_id, json.dumps(structured_plan))  # serialize dict to JSON string
+
+        # Step 4: Return a clean response
         return {
             "user_message": request.message,
-            "ai_response": json.loads(response),  # Assuming it's JSON string
+            "ai_response": structured_plan,
             "status": "Stored in diet table"
         }
-    except json.JSONDecodeError:
-        return {
-            "error": "AI response was not in valid JSON format.",
-            "raw_response": response
-        }
+
+    except ValueError as ve:
+        # This is for missing user in DB
+        raise HTTPException(status_code=404, detail=str(ve))
+
+    except json.JSONDecodeError as je:
+        raise HTTPException(status_code=500, detail="AI returned invalid JSON")
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
