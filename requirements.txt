@@ -2,3 +2,8 @@ requests
 pydantic
 fastapi
 python-dotenv
+kafka-python
+uvicorn
+streamlit
+matplotlib
+pandas
