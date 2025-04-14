@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import sqlite3
 import json
 from llm import get_structured_output , get_user_data , store_AI_plan
+from typing import Dict
 
 app = FastAPI()
 
@@ -12,6 +13,11 @@ DB_NAME = 'health_tracker.db'
 class ChatRequest(BaseModel):
     message: str
     user_id: int
+    
+class MealLog(BaseModel):
+    user_id: int
+    meal_type: str
+    user_meals: Dict
 
 # ---------------------------
 # GET /user?id=
@@ -94,3 +100,21 @@ def chat(request: ChatRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+    
+@app.post("/meal_log")
+def meal_log(request: MealLog):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    user_meals_json = json.dumps(request.user_meals)  # Convert dict to JSON string
+    
+    # Assuming meal_log table has columns: id, user_id, meal_type, user_meals
+    cursor.execute(
+        "INSERT INTO meal_log (user_id, meal_type, user_meals) VALUES (?, ?, ?)",
+        (request.user_id, request.meal_type, user_meals_json)
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    return {"status": "Meal log stored successfully"}

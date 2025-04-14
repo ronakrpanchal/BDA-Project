@@ -25,5 +25,14 @@ cursor.execute('''
     )
 ''')
 
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS meal_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        meal_type TEXT NOT NULL,
+        user_meals TEXT NOT NULL
+        )
+               ''')
+
 conn.commit()
 conn.close()
