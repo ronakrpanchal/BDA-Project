@@ -3,6 +3,8 @@ import sqlite3
 import requests
 import json
 from dotenv import load_dotenv
+from confluent_kafka import Producer
+import datetime
 
 load_dotenv()
 
@@ -14,6 +16,22 @@ HEADERS = {
     "Authorization": f"Bearer {GROQ_API_KEY}",
     "Content-Type": "application/json"
 }
+
+# Kafka configuration
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+MEAL_LOG_TOPIC = "meal-logs"
+
+# Kafka producer setup
+def get_kafka_producer():
+    conf = {'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS}
+    return Producer(conf)
+
+# Kafka delivery callback
+def delivery_report(err, msg):
+    if err is not None:
+        print(f'Message delivery failed: {err}')
+    else:
+        print(f'Message delivered to {msg.topic()} [{msg.partition()}]')
 
 # ---------- Fetch User Data ----------
 def get_user_data(user_id: int):
@@ -225,15 +243,36 @@ def store_AI_plan(user_id: int, ai_json: str):
     conn.commit()
     conn.close()
     
-def store_meal(userId,mealType,user_meals):
+def store_meal(userId, mealType, user_meals):
+    # Store in DB
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO meal_log (user_id, meal_type, user_meals) VALUES (?, ?, ?)",
         (userId, mealType, user_meals)
     )
+    meal_id = cursor.lastrowid
     conn.commit()
     conn.close()
+    
+    # Send to Kafka
+    try:
+        meal_data = json.loads(user_meals)
+        # Add timestamp and user_id to the meal data
+        meal_data['user_id'] = userId
+        meal_data['meal_id'] = meal_id
+        meal_data['timestamp'] = datetime.datetime.now().isoformat()
+        
+        producer = get_kafka_producer()
+        producer.produce(
+            MEAL_LOG_TOPIC, 
+            key=str(userId), 
+            value=json.dumps(meal_data),
+            callback=delivery_report
+        )
+        producer.flush()
+    except Exception as e:
+        print(f"Error sending meal data to Kafka: {e}")
 
 # ---------- Main ----------
 if __name__ == "__main__":

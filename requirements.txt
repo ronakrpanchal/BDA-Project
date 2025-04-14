@@ -1,4 +1,13 @@
-requests
+flask==2.2.3
+requests==2.28.2
 pydantic
 fastapi
-python-dotenv
+python-dotenv==1.0.0
+kafka-python
+uvicorn
+streamlit
+matplotlib
+pandas==2.0.0
+confluent-kafka==2.1.0
+prometheus-client==0.17.0
+flask-cors==3.0.10

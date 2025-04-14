@@ -4,10 +4,28 @@ import sqlite3
 import json
 from llm import get_structured_output , get_user_data , store_AI_plan, meal_logging, store_meal
 from typing import Dict
+from kafka import KafkaProducer
+from json import dumps
+import datetime
+import os
 
 app = FastAPI()
 
 DB_NAME = 'health_tracker.db'
+
+# Configure Kafka Producer
+KAFKA_BOOTSTRAP_SERVERS = os.environ.get('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
+KAFKA_TOPIC_MEAL_LOGS = 'meal-logs'
+
+try:
+    producer = KafkaProducer(
+        bootstrap_servers=[KAFKA_BOOTSTRAP_SERVERS],
+        value_serializer=lambda x: dumps(x).encode('utf-8')
+    )
+    print(f"Connected to Kafka at {KAFKA_BOOTSTRAP_SERVERS}")
+except Exception as e:
+    print(f"Failed to connect to Kafka: {e}")
+    producer = None
 
 # Chat Request Body
 class ChatRequest(BaseModel):
@@ -111,5 +129,24 @@ def meal_log(request: ChatRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+    
+    # Send meal log data to Kafka for real-time processing
+    if producer:
+        try:
+            # Prepare data for Kafka
+            kafka_data = {
+                # "id": meal_log_id,
+                "user_id": request.user_id,
+                "meal_type": request.meal_type,
+                "user_meals": request.user_meals,
+                "timestamp": datetime.datetime.now().isoformat()
+            }
+            
+            # Send data to Kafka topic
+            producer.send(KAFKA_TOPIC_MEAL_LOGS, value=kafka_data)
+            producer.flush()  # Ensure data is sent
+            print(f"Sent meal log data to Kafka topic {KAFKA_TOPIC_MEAL_LOGS}")
+        except Exception as e:
+            print(f"Failed to send data to Kafka: {e}")
     
     return {"status": "Meal log stored successfully"}
