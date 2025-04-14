@@ -153,6 +153,66 @@ Some user info is fetched from the database, the rest is extracted from the prom
     except json.JSONDecodeError:
         print("Failed to parse JSON. Raw content:\n", content)
         raise
+      
+      
+def meal_logging(meal_prompt):
+    meal_log_system_prompt = f"""
+You are a professional nutritionist.
+
+Your task is to analyze the user's meal description and return a valid JSON with nutrient breakdown for each item and the total.
+
+---
+
+### 🎯 JSON Output Format (strict):
+{{
+  "mealType": "<breakfast/lunch/dinner/snack>",
+  "totalCalories": 620,
+  "macronutrients": {{
+    "carbohydrates": 85,
+    "proteins": 20,
+    "fats": 25
+  }},
+  "items": [
+    {{
+      "name": "<food item>",
+      "calories": 300,
+      "carbs": 40,
+      "proteins": 8,
+      "fats": 12
+    }},
+    ...
+  ]
+}}
+
+---
+
+### 📝 Prompt Guidance:
+
+- Meals are Indian/Gujarati.
+- Calculate nutritional breakdown based on average serving sizes.
+- Avoid units (e.g., just `40` not `40g`).
+- Ensure valid JSON only — no text or formatting around it.
+- no backticks or writing json.
+
+"""
+    payload = {
+        "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "temperature": 0.4,
+        "messages": [
+            {"role": "system", "content": meal_log_system_prompt},
+            {"role": "user", "content": meal_prompt}
+        ]
+    }
+
+    response = requests.post(GROQ_ENDPOINT, headers=HEADERS, json=payload)
+    response.raise_for_status()
+    content = response.json()["choices"][0]["message"]["content"]
+
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        print("❌ Failed to parse JSON.\nRaw output:\n", content)
+        raise
 
 # ---------- Store in DB ----------
 def store_AI_plan(user_id: int, ai_json: str):
@@ -164,21 +224,38 @@ def store_AI_plan(user_id: int, ai_json: str):
     )
     conn.commit()
     conn.close()
+    
+def store_meal(userId,mealType,user_meals):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO meal_log (user_id, meal_type, user_meals) VALUES (?, ?, ?)",
+        (userId, mealType, user_meals)
+    )
+    conn.commit()
+    conn.close()
 
 # ---------- Main ----------
 if __name__ == "__main__":
     user_id = 1
     user_prompt = "Can you plan a budget-friendly high-protein vegetarian diet for me?"
+    user_prompt_2 = "Today I had 2 idlis with sambhar, 1 cup of tea, and 1 banana. Can you log this meal for me?"
 
     try:
-        user_data = get_user_data(user_id)
-        structured_plan = get_structured_output(user_prompt, user_data)
+        # user_data = get_user_data(user_id)
+        # structured_plan = get_structured_output(user_prompt, user_data)
 
-        print("\n--- AI Structured Output ---\n")
-        print(json.dumps(structured_plan, indent=2))
+        # print("\n--- AI Structured Output ---\n")
+        # print(json.dumps(structured_plan, indent=2))
 
-        # Optional: Save to DB
-        store_AI_plan(user_id, json.dumps(structured_plan))
-        print("Plan saved successfully.")
+        # # Optional: Save to DB
+        # store_AI_plan(user_id, json.dumps(structured_plan))
+        # print("Plan saved successfully.")
+        
+        meal_plan = meal_logging(user_prompt_2)
+        print("\n--- Meal Logging Output ---\n")
+        print(json.dumps(meal_plan, indent=2))
+        # Optional: Save meal log to DB
+        store_meal(user_id, meal_plan['mealType'], json.dumps(meal_plan))
     except Exception as e:
         print(f"Error: {e}")
