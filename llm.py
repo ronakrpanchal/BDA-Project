@@ -3,8 +3,6 @@ import sqlite3
 import requests
 import json
 from dotenv import load_dotenv
-from confluent_kafka import Producer
-import datetime
 
 load_dotenv()
 
@@ -16,22 +14,6 @@ HEADERS = {
     "Authorization": f"Bearer {GROQ_API_KEY}",
     "Content-Type": "application/json"
 }
-
-# Kafka configuration
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-MEAL_LOG_TOPIC = "meal-logs"
-
-# Kafka producer setup
-def get_kafka_producer():
-    conf = {'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS}
-    return Producer(conf)
-
-# Kafka delivery callback
-def delivery_report(err, msg):
-    if err is not None:
-        print(f'Message delivery failed: {err}')
-    else:
-        print(f'Message delivered to {msg.topic()} [{msg.partition()}]')
 
 # ---------- Fetch User Data ----------
 def get_user_data(user_id: int):
@@ -49,140 +31,98 @@ def get_user_data(user_id: int):
         "gender": row[3],
         "bfp": row[4]
     }
-
+    
 # ---------- Get Structured Response from Groq API ----------
+
 def get_structured_output(user_prompt, user_data):
     system_prompt = f"""
-You are a professional **diet planning assistant**.
-
-Your task is to return **only a valid JSON response** that strictly follows the schema given below. No explanations, no extra text—just clean, valid JSON.
+    You are an AI nutrition assistant. Your job is to handle three types of user queries:
 
 ---
 
-### 📄 Schema (Strict Format):
+### 1. If the user asks for a **diet plan**, behave like a professional **diet planning assistant**. In this case:
+
+- Return a **valid JSON** in this format:
+
 {{
-  "dailyNutrition": {{
-    "calories": 1850,
-    "carbs": 260,
-    "fats": 55,
-    "protein": 110,
-    "waterIntake": "4 liters"
-  }},
-  "calorieDistribution": [
-    {{ "category": "carbohydrates", "percentage": "50%" }},
-    {{ "category": "proteins", "percentage": "30%" }},
-    {{ "category": "fats", "percentage": "20%" }}
-  ],
-  "goal": "<User goal here (e.g., fat loss)>",
-  "dietPreference": "<User diet preference (e.g., vegetarian, vegan)>",
-  "workoutRoutine": [
-    {{ "day": "Monday", "routine": "Cardio - 30 minutes" }},
-    {{ "day": "Tuesday", "routine": "Strength - 30 minutes" }},
-    {{ "day": "Wednesday", "routine": "Yoga - 30 minutes" }},
-    {{ "day": "Thursday", "routine": "Cycling - 45 minutes" }},
-    {{ "day": "Friday", "routine": "HIIT - 20 minutes" }},
-    {{ "day": "Saturday", "routine": "Walk - 60 minutes" }},
-    {{ "day": "Sunday", "routine": "Rest or light stretching" }}
-  ],
-  "mealPlans": [
-    {{
-      "day": "Monday",
-      "totalCalories": 2200,
-      "macronutrients": {{
-        "carbohydrates": 275,
-        "proteins": 165,
-        "fats": 49
-      }},
-      "meals": [
-        {{
-          "mealType": "breakfast",
-          "items": [
-            {{
-              "name": "Idli with Sambhar",
-              "ingredients": ["rawa", "tomatoes", "dal", "spices", "onions"],
-              "calories": 350
-            }},
-            ...
-          ]
-        }},
-        ...
-      ]
+  "message": "your diet has been created",
+  "response_type": "diet_plan",
+  "diet_plan": {{
+    "dailyNutrition": {{
+      "calories": 1850,
+      "carbs": 260,
+      "fats": 55,
+      "protein": 110,
+      "waterIntake": "4 liters"
     }},
-    ... (Repeat for other days up to Sunday)
-  ]
+    "calorieDistribution": [
+      {{ "category": "carbohydrates", "percentage": "50%" }},
+      {{ "category": "proteins", "percentage": "30%" }},
+      {{ "category": "fats", "percentage": "20%" }}
+    ],
+    "goal": "<User goal here (e.g., fat loss)>",
+    "dietPreference": "<User diet preference (e.g., vegetarian, vegan)>",
+    "workoutRoutine": [
+      {{ "day": "Monday", "routine": "Cardio - 30 minutes" }},
+      {{ "day": "Tuesday", "routine": "Strength - 30 minutes" }},
+      {{ "day": "Wednesday", "routine": "Yoga - 30 minutes" }},
+      {{ "day": "Thursday", "routine": "Cycling - 45 minutes" }},
+      {{ "day": "Friday", "routine": "HIIT - 20 minutes" }},
+      {{ "day": "Saturday", "routine": "Walk - 60 minutes" }},
+      {{ "day": "Sunday", "routine": "Rest or light stretching" }}
+    ],
+    "mealPlans": [
+      {{
+        "day": "Monday",
+        "totalCalories": 2200,
+        "macronutrients": {{
+          "carbohydrates": 275,
+          "proteins": 165,
+          "fats": 49
+        }},
+        "meals": [
+          {{
+            "mealType": "breakfast",
+            "items": [
+              {{
+                "name": "Idli with Sambhar",
+                "ingredients": ["rawa", "tomatoes", "dal", "spices", "onions"],
+                "calories": 350
+              }}
+              // More items
+            ]
+          }}
+          // Other meals
+        ]
+      }}
+      // Repeat for all 7 days
+    ]
+  }}
 }}
 
----
-
-### 📌 Data Input Instructions:
-
-Some user info is fetched from the database, the rest is extracted from the prompt.
-
-- **Database Data** (already provided to you):
+- Use this data from the database:
   - Height: {user_data['height']} cm
   - Weight: {user_data['weight']} kg
   - Age: {user_data['age']} years
   - Gender: {user_data['gender']}
-  - Body Fat Percentage (BFP): {user_data['bfp']}%
+  - Body Fat %: {user_data['bfp']}%
 
-- **Prompt Data** (user will provide in prompt):
-  - Goal (e.g., weight loss, muscle gain)
-  - Budget (if any)
-  - Allergies or medical conditions (if mentioned)
-  - Calorie intake (if specified)
-  - Activity level (e.g., sedentary, high)
+- Extract from prompt:
+  - Goal, Budget, Activity Level, Allergies, Calorie target, etc.
 
----
+- Meals must be Indian/Gujarati. Avoid non-veg for vegetarians and dairy for vegans. Include ingredients and calories.
 
-### 🍽️ Meal Planning Guidelines:
-
-- Meals must be Indian/Gujarati style.
-- For vegetarians: strictly avoid non-veg.
-- For vegans: strictly avoid non-veg and dairy.
-- Account for user allergies and medical conditions (if mentioned).
-- All meals must mention calories and include ingredients using regional items.
-- Ensure 7-day plan follows calorie and macronutrient targets.
-- Do not output any units for integers (e.g., 275 not "275g").
+- **No markdown or explanations. Only valid JSON. Avoid units.**
 
 ---
 
-### ⚠️ Important:
+### 2. If the user describes a **meal they've eaten**, act as a **meal logging nutritionist**. In this case:
 
-- **DO NOT include any extra commentary or markdown.**
-- **Output must be a valid JSON structure as shown above.**
-- avoid backticks and writing json 
-"""
+Return JSON in this format:
 
-    payload = {
-        "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "temperature": 0.5,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-    }
-
-    response = requests.post(GROQ_ENDPOINT, headers=HEADERS, json=payload)
-    response.raise_for_status()
-    content = response.json()["choices"][0]["message"]["content"]
-
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        print("Failed to parse JSON. Raw content:\n", content)
-        raise
-      
-      
-def meal_logging(meal_prompt):
-    meal_log_system_prompt = f"""
-You are a professional nutritionist.
-
-Your task is to analyze the user's meal description and return a valid JSON with nutrient breakdown for each item and the total.
-
----
-
-### 🎯 JSON Output Format (strict):
 {{
+  "response_type": "meal_logging",
+  "message": "your meal has been logged",
   "mealType": "<breakfast/lunch/dinner/snack>",
   "totalCalories": 620,
   "macronutrients": {{
@@ -192,109 +132,95 @@ Your task is to analyze the user's meal description and return a valid JSON with
   }},
   "items": [
     {{
-      "name": "<food item>",
+      "name": "Poha",
       "calories": 300,
       "carbs": 40,
       "proteins": 8,
       "fats": 12
-    }},
-    ...
+    }}
+    // more items
   ]
 }}
 
+- Use average serving sizes.
+- Meals should be Indian/Gujarati.
+- Avoid units like "g" or "ml"—use only numbers.
+- **Return only valid JSON. No markdown, no commentary.**
+
 ---
 
-### 📝 Prompt Guidance:
+### 3. If the user is just chatting and not asking for a diet plan or meal logging, respond as a **normal AI assistant**.
 
-- Meals are Indian/Gujarati.
-- Calculate nutritional breakdown based on average serving sizes.
-- Avoid units (e.g., just `40` not `40g`).
-- Ensure valid JSON only — no text or formatting around it.
-- no backticks or writing json.
+Return:
 
-"""
+{{
+  "message": "<Your response here>",
+  "response_type": "conversation"
+}}
+
+- This means the prompt is not related to diet planning or meal logging.
+- Do **not** include any other keys or schemas.
+
+---
+
+⚠️ Rules:
+- Only output JSON.
+- No markdown, no commentary, no backticks.
+- Output must be directly parsable.
+
+---
+    """
+    
     payload = {
         "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "temperature": 0.4,
+        "temperature": 0.5,
         "messages": [
-            {"role": "system", "content": meal_log_system_prompt},
-            {"role": "user", "content": meal_prompt}
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
         ]
     }
-
+    
     response = requests.post(GROQ_ENDPOINT, headers=HEADERS, json=payload)
     response.raise_for_status()
     content = response.json()["choices"][0]["message"]["content"]
-
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        print("❌ Failed to parse JSON.\nRaw output:\n", content)
+        print("Failed to parse JSON. Raw content:\n", content)
         raise
+    
+# ---------- Logging ----------
 
-# ---------- Store in DB ----------
-def store_AI_plan(user_id: int, ai_json: str):
+def store_response(user_id: int, data: dict):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO diet (user_id, AI_plan) VALUES (?, ?)",
-        (user_id, ai_json)
-    )
-    conn.commit()
-    conn.close()
-    
-def store_meal(userId, mealType, user_meals):
-    # Store in DB
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO meal_log (user_id, meal_type, user_meals) VALUES (?, ?, ?)",
-        (userId, mealType, user_meals)
-    )
-    meal_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    
-    # Send to Kafka
-    try:
-        meal_data = json.loads(user_meals)
-        # Add timestamp and user_id to the meal data
-        meal_data['user_id'] = userId
-        meal_data['meal_id'] = meal_id
-        meal_data['timestamp'] = datetime.datetime.now().isoformat()
-        
-        producer = get_kafka_producer()
-        producer.produce(
-            MEAL_LOG_TOPIC, 
-            key=str(userId), 
-            value=json.dumps(meal_data),
-            callback=delivery_report
+
+    if data["response_type"] == "diet_plan":
+        cursor.execute(
+            "INSERT INTO diet (user_id, AI_plan) VALUES (?, ?)",
+            (user_id, json.dumps(data))
         )
-        producer.flush()
-    except Exception as e:
-        print(f"Error sending meal data to Kafka: {e}")
+    elif data["response_type"] == "meal_logging":
+        cursor.execute(
+            "INSERT INTO meal_log (user_id, meal_type, user_meals) VALUES (?, ?, ?)",
+            (user_id, data["mealType"], json.dumps(data))
+        )
 
-# ---------- Main ----------
+    conn.commit()
+    conn.close()
+    
+# ---------- Main Function ----------
 if __name__ == "__main__":
-    user_id = 1
-    user_prompt = "Can you plan a budget-friendly high-protein vegetarian diet for me?"
-    user_prompt_2 = "Today I had 2 idlis with sambhar, 1 cup of tea, and 1 banana. Can you log this meal for me?"
-
+    user_id = 1  # Example user ID
+    user_prompt = "I had idli and sambhar for breakfast."
+    
     try:
-        # user_data = get_user_data(user_id)
-        # structured_plan = get_structured_output(user_prompt, user_data)
-
-        # print("\n--- AI Structured Output ---\n")
-        # print(json.dumps(structured_plan, indent=2))
-
-        # # Optional: Save to DB
-        # store_AI_plan(user_id, json.dumps(structured_plan))
-        # print("Plan saved successfully.")
-        
-        meal_plan = meal_logging(user_prompt_2)
-        print("\n--- Meal Logging Output ---\n")
-        print(json.dumps(meal_plan, indent=2))
-        # Optional: Save meal log to DB
-        store_meal(user_id, meal_plan['mealType'], json.dumps(meal_plan))
+        user_data = get_user_data(user_id)
+        structured_response = get_structured_output(user_prompt, user_data)
+        if structured_response["response_type"] in ["diet_plan","meal_logging"]:
+            store_response(user_id, structured_response)
+            print("Response stored successfully.")
+        else:
+            print(structured_response["message"])
     except Exception as e:
         print(f"Error: {e}")

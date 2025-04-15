@@ -2,9 +2,7 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 import sqlite3
 import json
-from llm_2 import get_structured_output, store_response , get_user_data
-from typing import Dict
-import datetime
+from llm import get_structured_output, store_response , get_user_data
 
 app = FastAPI()
 
