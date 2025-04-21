@@ -3,8 +3,19 @@ from pydantic import BaseModel
 import sqlite3
 import json
 from llm import get_structured_output, store_response , get_user_data
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 DB_NAME = 'health_tracker.db'
 
@@ -102,7 +113,76 @@ def health_ai(request: ChatRequest):
         raise HTTPException(status_code=404, detail=str(ve))
 
     except json.JSONDecodeError as je:
+        print(je)
         raise HTTPException(status_code=500, detail="AI returned invalid JSON")
 
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+    
+
+
+@app.get("/diets")
+def get_all_diets():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM diet")
+    rows = cursor.fetchall()
+    conn.close()
+
+    if rows:
+        diets = []
+        for row in rows:
+            try:
+                ai_plan = json.loads(row[1]) if row[1] else None
+            except json.JSONDecodeError:
+                ai_plan = row[1]  
+
+            diets.append({
+                "id": row[0],
+                "AI_Plan": ai_plan,
+                "user_id": row[2]
+            })
+
+        return diets
+    else:
+        return JSONResponse(content={"message": "No diets found"}, status_code=200)
+    
+
+@app.get("/logs")
+def get_all_logs():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM meal_log")
+    rows = cursor.fetchall()
+    conn.close()
+    print(rows)
+
+    if rows:
+        logs = []
+        for row in rows:
+            try:
+                meal_data = json.loads(row[3]) if row[3] else None
+            except json.JSONDecodeError:
+                meal_data = row[3]
+
+            logs.append({
+                "id": row[0],
+                "user_id": row[1],
+                "meal_type": row[2],
+                "meal_data": meal_data
+            })
+        return logs
+    else:
+        return JSONResponse(content={"message": "No logs found"}, status_code=200)
+
+
+
+@app.delete("/logs/clear")
+def clear_all_logs():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM meal_log")
+    conn.commit()
+    conn.close()
+    return {"message": "All meal logs deleted"}
