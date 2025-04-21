@@ -5,7 +5,12 @@ description = "Default template for PDM package"
 authors = [
     {name = "sankalpaacharya", email = "sankalpaacharya01@gmail.com"},
 ]
-dependencies = ["pydantic>=2.11.3", "requests>=2.32.3", "fastapi[standard]>=0.115.12", "python-dotenv>=1.1.0"]
+dependencies = [
+    "pydantic>=2.11.3",
+    "requests>=2.32.3",
+    "fastapi[standard]>=0.115.12",
+    "python-dotenv>=1.1.0",
+]
 requires-python = "==3.11.*"
 readme = "README.md"
 license = {text = "MIT"}
