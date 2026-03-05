@@ -173,9 +173,6 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-bda_final.pdf
-BDA-project.zip
-PLAN_MY_DIET.pptx
-health_tracker.db
-/data/
 .gitignore
+/test
+/data
