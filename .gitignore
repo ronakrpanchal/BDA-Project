@@ -176,3 +176,6 @@ cython_debug/
 .gitignore
 /test
 /data
+/backend/db.py
+/backend/health_tracker.db
+/backend/__pycache__/
