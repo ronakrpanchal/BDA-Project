@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Utensils, MessageCircle, Trophy, NotebookPen } from "lucide-react";
+import { Utensils, MessageCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -11,8 +11,6 @@ type Props = {};
 const Links = [
   { name: "Chat", href: "/c/id", icon: MessageCircle, optional: "/c" },
   { name: "Diets", href: "/diet", icon: Utensils },
-  { name: "Achievement", href: "/achievement", icon: Trophy },
-  { name: "Notes", href: "/notes", icon: NotebookPen },
 ];
 
 export default function SideBar({}: Props) {

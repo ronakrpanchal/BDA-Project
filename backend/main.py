@@ -1,10 +1,20 @@
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3
 import json
 from llm import get_structured_output, store_response , get_user_data
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=False,  # Set to False when using allow_origins=["*"]
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 DB_NAME = 'health_tracker.db'
 
@@ -37,6 +47,32 @@ def get_user(id: int = Query(..., description="User ID")):
         }
     else:
         raise HTTPException(status_code=404, detail="User not found")
+
+# ---------------------------
+# GET /diets - Get all diets
+# ---------------------------
+@app.get("/diets")
+def get_all_diets():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM diet")
+    rows = cursor.fetchall()
+    conn.close()
+
+    diets = []
+    for row in rows:
+        try:
+            ai_plan = json.loads(row[1]) if row[1] else None
+        except json.JSONDecodeError:
+            ai_plan = row[1]  # if it wasn't valid JSON, return as raw string
+
+        diets.append({
+            "id": row[0],
+            "AI_Plan": ai_plan,
+            "user_id": row[2]
+        })
+    
+    return diets
 
 # ---------------------------
 # GET /diet?id=
