@@ -172,7 +172,7 @@ Return:
     """
     
     payload = {
-        "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "model": "llama-3.3-70b-versatile",
         "temperature": 0.5,
         "messages": [
             {"role": "system", "content": system_prompt},
