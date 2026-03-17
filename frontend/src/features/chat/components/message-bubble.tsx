@@ -53,7 +53,7 @@ export default function ChatComponent({ className }: ChatComponentProps) {
     
     try {
       // Send the message to your API
-      const response = await fetch("http://localhost:8000/health_ai", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/health_ai`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

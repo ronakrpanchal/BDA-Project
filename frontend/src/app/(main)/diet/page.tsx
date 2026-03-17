@@ -119,7 +119,7 @@ export default function Page() {
     const fetchDiets = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:8000/diets");
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/diets`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
