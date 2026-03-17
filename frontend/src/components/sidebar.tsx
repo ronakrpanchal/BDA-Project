@@ -6,14 +6,12 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-type Props = {};
-
 const Links = [
   { name: "Chat", href: "/c/id", icon: MessageCircle, optional: "/c" },
   { name: "Diets", href: "/diet", icon: Utensils },
 ];
 
-export default function SideBar({}: Props) {
+export default function SideBar() {
   const activeLink = usePathname();
 
   return (

@@ -3,14 +3,6 @@ import { Dumbbell } from "lucide-react";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { Separator } from "./ui/separator";
-import { GiGymBag } from "react-icons/gi";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-type Props = {};
 
 const navLinks = [
   {
@@ -31,7 +23,7 @@ const navLinks = [
   },
 ];
 
-export default function Navbar({}: Props) {
+export default function Navbar() {
   return (
     <>
       <nav className="wrapper p-5 py-7 flex justify-between items-center">

@@ -3,7 +3,6 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   SendHorizontal,
   Search,
-  Chrome,
   Lightbulb,
   MoreHorizontal,
 } from "lucide-react";
@@ -15,7 +14,6 @@ interface ChatInputProps {
 
 export default function ChatInput({ className }: ChatInputProps) {
   const [message, setMessage] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -48,8 +46,6 @@ export default function ChatInput({ className }: ChatInputProps) {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
           placeholder="Ask anything"
           className="w-full bg-transparent border-0 min-h-14 max-h-[300px] px-5 py-4 text-white focus:outline-none placeholder:text-gray-500 resize-none"
           rows={1}

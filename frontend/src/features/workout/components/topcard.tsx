@@ -1,7 +1,5 @@
 import React from "react";
 
-type Props = {};
-
-export default function Topcard({}: Props) {
+export default function Topcard() {
   return <div>topcard</div>;
 }

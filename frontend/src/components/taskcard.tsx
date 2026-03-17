@@ -5,15 +5,13 @@ import { FiPlus } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 
-type Props = {};
-
 const dietRoutine = [
   { id: 1, name: "Keto", weight: 40, rep: 250, isComplete: false },
   { id: 2, name: "Paleo", weight: 25, rep: 240, isComplete: false },
   { id: 3, name: "Mediterranean", weight: 100, rep: 200, isComplete: false },
 ];
 
-export default function TaskCard({}: Props) {
+export default function TaskCard() {
   const [diets, setDiets] = useState(dietRoutine);
 
   const toggleComplete = (id: number) => {
@@ -21,7 +19,6 @@ export default function TaskCard({}: Props) {
       const newDiets = prev.map((w) =>
         w.id === id ? { ...w, isComplete: !w.isComplete } : w
       );
-      const diet = newDiets.find((w) => w.id === id);
       return newDiets;
     });
   };

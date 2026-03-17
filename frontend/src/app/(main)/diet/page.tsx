@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
 import { Instrument_Serif } from "next/font/google";
 
 const instrumentSerif = Instrument_Serif({
@@ -58,13 +59,20 @@ interface DietData {
   mealPlans?: DayPlan[];
 }
 
-interface FetchedDietItem {
-  _id?: string;
-  diet_plan?: DietData;
+interface DietApiItem {
+  AI_Plan?: {
+    diet_plan?: DietData;
+  };
 }
 
 // Tab Button Component
-const TabButton = ({ children, active, onClick }) => {
+interface TabButtonProps {
+  children: ReactNode;
+  active: boolean;
+  onClick: () => void;
+}
+
+const TabButton = ({ children, active, onClick }: TabButtonProps) => {
   return (
     <button
       onClick={onClick}
@@ -80,7 +88,13 @@ const TabButton = ({ children, active, onClick }) => {
 };
 
 // Diet Card Component
-const DietCard = ({ diet, onClick, index }) => {
+interface DietCardProps {
+  diet: DietData;
+  onClick: () => void;
+  index: number;
+}
+
+const DietCard = ({ diet, onClick, index }: DietCardProps) => {
   // Generate a suitable title based on available properties
   const generateTitle = () => {
     return ` Diet #${index + 1}`;
@@ -123,54 +137,21 @@ export default function Page() {
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        const data = await response.json();
+        const data: DietApiItem[] = await response.json();
 
         console.log("Fetched diets raw:", data);
 
-        // Map the fetched data to extract diet_plan, using optional chaining
-        const extractedDiets: DietData[] = data.map(item => ({
-          dailyNutrition: {
-            calories: item?.AI_Plan?.diet_plan?.dailyNutrition?.calories,
-            carbs: item?.AI_Plan?.diet_plan?.dailyNutrition?.carbs,
-            fats: item?.AI_Plan?.diet_plan?.dailyNutrition?.fats,
-            protein: item?.AI_Plan?.diet_plan?.dailyNutrition?.protein,
-            waterIntake: item?.AI_Plan?.diet_plan?.dailyNutrition?.waterIntake,
-          },
-          calorieDistribution: item?.AI_Plan?.diet_plan?.calorieDistribution?.map(dist => ({
-            category: dist?.category,
-            percentage: dist?.percentage,
-          })),
-          goal: item?.AI_Plan?.diet_plan?.goal,
-          dietPreference: item?.AI_Plan?.diet_plan?.dietPreference,
-          workoutRoutine: item?.AI_Plan?.diet_plan?.workoutRoutine?.map(workout => ({
-            day: workout?.day,
-            routine: workout?.routine,
-          })),
-          mealPlans: item?.AI_Plan?.diet_plan?.mealPlans?.map(plan => ({
-            day: plan?.day,
-            totalCalories: plan?.totalCalories,
-            macronutrients: {
-              carbohydrates: plan?.macronutrients?.carbohydrates,
-              proteins: plan?.macronutrients?.proteins,
-              fats: plan?.macronutrients?.fats,
-            },
-            meals: plan?.meals?.map(meal => ({
-              mealType: meal?.mealType,
-              items: meal?.items?.map(ing => ({
-                name: ing?.name,
-                ingredients: ing?.ingredients,
-                calories: ing?.calories,
-              })),
-            })),
-          })),
-        }));
+        // Extract only valid diet plans from API payload
+        const extractedDiets: DietData[] = data
+          .map((item) => item.AI_Plan?.diet_plan)
+          .filter((plan): plan is DietData => Boolean(plan));
 
         console.log("Extracted diets:", extractedDiets);
         setDietsList(extractedDiets);
         setLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Fetch error:", err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : "Failed to fetch diet plans");
         setLoading(false);
       }
     };
@@ -253,7 +234,6 @@ export default function Page() {
                       <ul className="space-y-3">
                         <li className="flex justify-between border-b border-gray-700 pb-2">
                           <span>Calories:</span>
-                          {console.log("diet is",selectedDiet)}
                           <span className="font-medium text-white">{selectedDiet?.dailyNutrition?.calories} kcal</span>
                         </li>
                         <li className="flex justify-between border-b border-gray-700 pb-2">

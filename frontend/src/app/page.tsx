@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { FaArrowRight } from "react-icons/fa";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 const instrumentSerif = Instrument_Serif({
   variable: "--font-instrument",
@@ -44,14 +45,14 @@ const IntroducingSenku = () => {
       <h1 className="text-2xl md:text-4xl text-center max-w-lg">
         Hey, I can understand{" "}
         <span className="text-[#4D4D4D]">
-          Tracking diets, pushing PRs, and staying consistent isn't easy.{" "}
+          Tracking diets, pushing PRs, and staying consistent isn&apos;t easy.{" "}
         </span>
         <span className="text-[#4D4D4D]">
           Your AI-powered planning partner keeps you on track, motivated, and
           making real progress with every fork and spoon.{" "}
         </span>
         <br />
-        That's where PlanMyDiet comes in.{" "}
+        That&apos;s where PlanMyDiet comes in.{" "}
       </h1>
     </motion.div>
   );
@@ -117,7 +118,7 @@ const HowItWroks = () => {
   );
 };
 
-export const Testimonials = () => {
+const Testimonials = () => {
   return (
     <div className="wrapper flex flex-col justify-center items-center mt-20 md:mt-30 space-y-5 px-4 md:px-6">
       <span className="border shadow-xl border-gray-800 px-3 py-1 rounded-full">
@@ -153,10 +154,12 @@ export const Testimonials = () => {
             </p>
 
             <div className="flex gap-2 items-center">
-              <img
+              <Image
                 className="w-8 h-8 md:w-10 md:h-10 rounded-full"
                 src="https://github.com/sankalpaacharya.png"
-                alt=""
+                alt="User avatar"
+                width={40}
+                height={40}
               />
               <p className="flex flex-col">
                 <span className="text-sm md:text-base">Sankalpa Acharya</span>
@@ -272,7 +275,7 @@ const Footer = () => {
               <h3 className="text-lg font-medium">Join our newsletter</h3>
               <p className="text-sm text-gray-400">
                 Sign up to our mailing list below and be the first to know about
-                new updates. Don't worry, we hate spam too.
+                new updates. Don&apos;t worry, we hate spam too.
               </p>
               <div className="flex gap-2">
                 <input
@@ -346,10 +349,12 @@ const Footer = () => {
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-400">Created by</span>
             <div className="flex items-center space-x-2">
-              <img
+              <Image
                 src="https://github.com/sankalpaacharya.png"
                 alt="Creator"
                 className="w-6 h-6 rounded-full"
+                width={24}
+                height={24}
               />
               <span className="text-sm">Nishit Sankalpa Ronak</span>
             </div>
