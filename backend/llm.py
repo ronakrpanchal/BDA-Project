@@ -1,40 +1,50 @@
+"""Module to handle interactions with the Groq API for diet planning and meal logging."""
 import os
-import sqlite3
-import requests
 import json
+import requests
 from dotenv import load_dotenv
+from db import supabase
 
 load_dotenv()
 
-DB_NAME = "health_tracker.db"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
 HEADERS = {
     "Authorization": f"Bearer {GROQ_API_KEY}",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
 }
+
 
 # ---------- Fetch User Data ----------
 def get_user_data(user_id: int):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT height, weight, age, gender, bfp FROM user WHERE id = ?", (user_id,))
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
+    """ Fetch user data from the database for a given user ID. """
+    response = (
+        supabase.table("user")
+        .select("height, weight, age, gender, bfp")
+        .eq("id", user_id)
+        .execute()
+    )
+    data = response.data
+
+    if not data or len(data) == 0:
         raise ValueError(f"No user found with ID {user_id}")
+
+    row = data[0]
     return {
-        "height": row[0],
-        "weight": row[1],
-        "age": row[2],
-        "gender": row[3],
-        "bfp": row[4]
+        "height": row["height"],
+        "weight": row["weight"],
+        "age": row["age"],
+        "gender": row["gender"],
+        "bfp": row.get("bfp"),
     }
-    
+
+
 # ---------- Get Structured Response from Groq API ----------
 
+
 def get_structured_output(user_prompt, user_data):
+    """ Send the user prompt and data to the Groq API and get a structured response. """
     system_prompt = f"""
     You are an AI nutrition assistant. Your job is to handle three types of user queries:
 
@@ -101,11 +111,11 @@ def get_structured_output(user_prompt, user_data):
 }}
 
 - Use this data from the database:
-  - Height: {user_data['height']} cm
-  - Weight: {user_data['weight']} kg
-  - Age: {user_data['age']} years
-  - Gender: {user_data['gender']}
-  - Body Fat %: {user_data['bfp']}%
+  - Height: {user_data["height"]} cm
+  - Weight: {user_data["weight"]} kg
+  - Age: {user_data["age"]} years
+  - Gender: {user_data["gender"]}
+  - Body Fat %: {user_data["bfp"]}%
 
 - Extract from prompt:
   - Goal, Budget, Activity Level, Allergies, Calorie target, etc.
@@ -170,17 +180,17 @@ Return:
 
 ---
     """
-    
+
     payload = {
         "model": "llama-3.3-70b-versatile",
         "temperature": 0.5,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
+            {"role": "user", "content": user_prompt},
+        ],
     }
-    
-    response = requests.post(GROQ_ENDPOINT, headers=HEADERS, json=payload)
+
+    response = requests.post(GROQ_ENDPOINT, headers=HEADERS, json=payload, timeout=30)
     response.raise_for_status()
     content = response.json()["choices"][0]["message"]["content"]
     try:
@@ -188,39 +198,24 @@ Return:
     except json.JSONDecodeError:
         print("Failed to parse JSON. Raw content:\n", content)
         raise
-    
+
+
 # ---------- Logging ----------
 
+
 def store_response(user_id: int, data: dict):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
+    """ Store the structured response in the database. """
     if data["response_type"] == "diet_plan":
-        cursor.execute(
-            "INSERT INTO diet (user_id, AI_plan) VALUES (?, ?)",
-            (user_id, json.dumps(data))
-        )
+        supabase.table("diet").insert(
+            [{"user_id": user_id, "AI_Plan": json.dumps(data)}]
+        ).execute()
     elif data["response_type"] == "meal_logging":
-        cursor.execute(
-            "INSERT INTO meal_log (user_id, meal_type, user_meals) VALUES (?, ?, ?)",
-            (user_id, data["mealType"], json.dumps(data))
-        )
-
-    conn.commit()
-    conn.close()
-    
-# ---------- Main Function ----------
-if __name__ == "__main__":
-    user_id = 1  # Example user ID
-    user_prompt = "I had idli and sambhar for breakfast."
-    
-    try:
-        user_data = get_user_data(user_id)
-        structured_response = get_structured_output(user_prompt, user_data)
-        if structured_response["response_type"] in ["diet_plan","meal_logging"]:
-            store_response(user_id, structured_response)
-            print("Response stored successfully.")
-        else:
-            print(structured_response["message"])
-    except Exception as e:
-        print(f"Error: {e}")
+        supabase.table("meal_log").insert(
+            [
+                {
+                    "user_id": user_id,
+                    "meal_type": data["mealType"],
+                    "user_meals": json.dumps(data),
+                }
+            ]
+        ).execute()

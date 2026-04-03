@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Markdown from "react-markdown";
+import { getCurrentUserId } from "@/lib/session";
 
 // Types
 type Message = {
@@ -60,7 +61,7 @@ export default function ChatComponent({ className }: ChatComponentProps) {
         },
         body: JSON.stringify({
           message: userQuery,
-          user_id: 1
+          user_id: getCurrentUserId(),
         }),
       });
       

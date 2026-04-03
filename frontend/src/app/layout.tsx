@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { OnboardingProvider } from "@/components/onboarding-provider";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -35,7 +36,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <OnboardingProvider>{children}</OnboardingProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,8 +1,11 @@
+"use client";
+
 import React from "react";
 import { Dumbbell } from "lucide-react";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { Separator } from "./ui/separator";
+import { useOnboarding } from "@/components/onboarding-provider";
 
 const navLinks = [
   {
@@ -24,6 +27,8 @@ const navLinks = [
 ];
 
 export default function Navbar() {
+  const { openOnboarding } = useOnboarding();
+
   return (
     <>
       <nav className="wrapper p-5 py-7 flex justify-between items-center">
@@ -37,10 +42,10 @@ export default function Navbar() {
               {link.name}
             </Link>
           ))}
-
-<Link href="/c/id">
-  <Button className="cursor-pointer">Get started</Button>
-</Link>        </div>
+          <Button className="cursor-pointer" onClick={openOnboarding}>
+            Get started
+          </Button>
+        </div>
       </nav>
       <Separator />
     </>

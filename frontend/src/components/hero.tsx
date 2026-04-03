@@ -1,8 +1,11 @@
+"use client";
+
 import React from "react";
 import { Button } from "./ui/button";
 import { BicepsFlexed } from "lucide-react";
 import { Instrument_Serif } from "next/font/google";
 import TaskCard from "./taskcard";
+import { useOnboarding } from "@/components/onboarding-provider";
 
 const instrumentSerif = Instrument_Serif({
   variable: "--font-instrument",
@@ -12,6 +15,8 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export default function Hero() {
+  const { openOnboarding } = useOnboarding();
+
   return (
     <main className="wrapper flex justify-center py-20 flex-col items-center space-y-5 relative">
       <p className="border border-gray-800 px-3 rounded-full shadow-xl inline-flex items-center gap-2">
@@ -32,7 +37,7 @@ export default function Hero() {
         Get more done with less effort, in a way that works for you.
       </p>
       <div className="space-y-2 flex flex-col items-center">
-        <Button className="cursor-pointer font-bold mt-5 py-6">
+        <Button className="cursor-pointer font-bold mt-5 py-6" onClick={openOnboarding}>
           <BicepsFlexed />
           Try PlanMyDiet for free
         </Button>

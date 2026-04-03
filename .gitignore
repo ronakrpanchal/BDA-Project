@@ -178,5 +178,5 @@ cython_debug/
 /test
 /data
 /backend/db.py
-/backend/health_tracker.db
 /backend/__pycache__/
+secrets/

@@ -5,14 +5,23 @@ import { Utensils, MessageCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
-
-const Links = [
-  { name: "Chat", href: "/c/id", icon: MessageCircle, optional: "/c" },
-  { name: "Diets", href: "/diet", icon: Utensils },
-];
+import { getStoredSession } from "@/lib/session";
 
 export default function SideBar() {
   const activeLink = usePathname();
+  const [chatHref, setChatHref] = React.useState("/c/id");
+
+  React.useEffect(() => {
+    const session = getStoredSession();
+    if (session?.id) {
+      setChatHref(`/c/${session.id}`);
+    }
+  }, []);
+
+  const links = [
+    { name: "Chat", href: chatHref, icon: MessageCircle, optional: "/c" },
+    { name: "Diets", href: "/diet", icon: Utensils },
+  ];
 
   return (
     <motion.aside
@@ -32,7 +41,7 @@ export default function SideBar() {
       {/* Navigation Links */}
       <div className="flex-1 overflow-y-auto py-6 px-4">
         <nav className="flex flex-col gap-2">
-          {Links.map((item) => (
+          {links.map((item) => (
             <Link key={item.href} href={item.href}>
               <motion.div
                 whileHover={{ scale: 1.05 }}
