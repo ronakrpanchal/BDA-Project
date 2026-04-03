@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,14 +97,30 @@ const STEP_TITLES = [
   "Review & Finish",
 ];
 
+function OnboardingSearchParamsSync({
+  onProfileOnboardingRequested,
+}: {
+  onProfileOnboardingRequested: () => void;
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("onboarding") === "profile") {
+      onProfileOnboardingRequested();
+    }
+  }, [onProfileOnboardingRequested, searchParams]);
+
+  return null;
+}
+
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [session, setSession] = useState<UserSession | null>(null);
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [authMode, setAuthMode] = useState<AuthMode>("signup");
+  const [hasProfileQuery, setHasProfileQuery] = useState(false);
 
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
@@ -132,12 +148,8 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     });
   }, []);
 
-  useEffect(() => {
-    const onboardingMode = searchParams.get("onboarding");
-    if (onboardingMode !== "profile") {
-      return;
-    }
-
+  const handleProfileOnboardingRequested = useCallback(() => {
+    setHasProfileQuery(true);
     const stored = getStoredSession();
     if (!stored || stored.onboardingComplete) {
       return;
@@ -155,19 +167,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setError(null);
     setFieldErrors({});
     setOpen(true);
-  }, [searchParams]);
-
-  const resetWizard = () => {
-    setStep(0);
-    setError(null);
-    setFieldErrors({});
-    setAuthMode("signup");
-    setHeight("");
-    setWeight("");
-    setAge("");
-    setGender("");
-    setBfp("");
-  };
+  }, []);
 
   const closeWizard = () => {
     setOpen(false);
@@ -175,7 +175,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setFieldErrors({});
   };
 
-  const openOnboarding = () => {
+  const openOnboarding = useCallback(() => {
     const stored = getStoredSession();
 
     if (stored?.isLoggedIn && stored.onboardingComplete) {
@@ -200,7 +200,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     setError(null);
     setFieldErrors({});
     setOpen(true);
-  };
+  }, [router]);
 
   const handleGoogleCredential = async (credential: string) => {
     setBusy(true);
@@ -279,7 +279,7 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       setError(null);
       setOpen(true);
 
-      if (searchParams.get("onboarding") === "profile") {
+      if (hasProfileQuery) {
         router.replace("/");
       }
     } catch (err) {
@@ -408,13 +408,18 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
       openOnboarding,
       session,
     }),
-    [session]
+    [openOnboarding, session]
   );
 
   const progress = ((step + 1) / 4) * 100;
 
   return (
     <OnboardingContext.Provider value={value}>
+      <Suspense fallback={null}>
+        <OnboardingSearchParamsSync
+          onProfileOnboardingRequested={handleProfileOnboardingRequested}
+        />
+      </Suspense>
       {children}
       {open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 px-4 py-8">

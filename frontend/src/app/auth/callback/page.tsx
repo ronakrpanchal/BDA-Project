@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase-client";
 import { setStoredSession, type UserSession } from "@/lib/session";
@@ -40,7 +40,18 @@ function buildProfile(data: AuthUserResponse): UserSession["profile"] {
   };
 }
 
-export default function AuthCallbackPage() {
+function CallbackPendingState() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#0f1118] p-6 text-white">
+      <div className="w-full max-w-md rounded-2xl border border-indigo-500/30 bg-black/30 p-6 text-center">
+        <h1 className="text-xl font-semibold">Finalizing Google Sign-In</h1>
+        <p className="mt-2 text-sm text-gray-300">Please wait while we prepare your account.</p>
+      </div>
+    </div>
+  );
+}
+
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -148,5 +159,13 @@ export default function AuthCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<CallbackPendingState />}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
